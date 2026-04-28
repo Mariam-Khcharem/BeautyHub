@@ -1,0 +1,17 @@
+# Environnement
+.env
+
+# Images uploadées (trop lourdes pour git)
+assets/images/products/*
+!assets/images/products/.gitkeep
+
+# Setup temporaire
+setup.php
+
+# Logs
+*.log
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp

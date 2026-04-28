@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# Environnement (ne pas inclure dans l'image)
+.env
+.env.*
+
+# Données persistantes (montées via volumes)
+assets/images/products/*
+!assets/images/products/.gitkeep
+
+# Docker (pas besoin dans l'image)
+docker/
+docker-compose.yml
+Dockerfile
+
+# SQL d'origine (intégré via docker/mysql/)
+gestion_panier.sql
+migration.sql
+
+# Divers
+*.log
+*.md

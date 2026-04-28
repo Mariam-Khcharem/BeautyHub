@@ -1,0 +1,98 @@
+version: '3.9'
+
+# ============================================================
+#  BeautyHub — Docker Compose
+#  Services : app (PHP 8.2 + Apache) | db (MariaDB 10.4) | pma (phpMyAdmin)
+#
+#  Démarrage  : docker compose up -d --build
+#  App        : http://localhost:8080
+#  phpMyAdmin : http://localhost:8081
+#  Arrêt      : docker compose down
+#  Suppression données : docker compose down -v
+# ============================================================
+
+services:
+
+  # ── Application PHP / Apache ──────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: beautyhub_app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Code source monté en live (pas de rebuild pour les modifs PHP)
+      - .:/var/www/html
+      # Images produits persistantes hors container
+      - product_images:/var/www/html/assets/images/products
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-gestion_panier}
+      DB_USER: ${DB_USER:-beautyhub}
+      DB_PASS: ${DB_PASS:-beautySecret2024}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - beauty_net
+
+  # ── Base de données MariaDB ───────────────────────────────
+  db:
+    image: mariadb:10.4
+    container_name: beautyhub_db
+    restart: unless-stopped
+    ports:
+      - "3307:3306"           # 3307 sur l'hôte pour éviter conflit XAMPP
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-rootSecret2024}
+      MYSQL_DATABASE:      ${DB_NAME:-gestion_panier}
+      MYSQL_USER:          ${DB_USER:-beautyhub}
+      MYSQL_PASSWORD:      ${DB_PASS:-beautySecret2024}
+    volumes:
+      # Données persistantes
+      - db_data:/var/lib/mysql
+      # Scripts SQL exécutés au premier démarrage (ordre alphabétique)
+      - ./docker/mysql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "-p${DB_ROOT_PASS:-rootSecret2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - beauty_net
+
+  # ── phpMyAdmin ────────────────────────────────────────────
+  pma:
+    image: phpmyadmin:5.2
+    container_name: beautyhub_pma
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST:     db
+      PMA_PORT:     3306
+      PMA_USER:     root
+      PMA_PASSWORD: ${DB_ROOT_PASS:-rootSecret2024}
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - beauty_net
+
+# ── Volumes ───────────────────────────────────────────────────
+volumes:
+  db_data:
+    name: beautyhub_db_data
+  product_images:
+    name: beautyhub_product_images
+
+# ── Réseau interne ────────────────────────────────────────────
+networks:
+  beauty_net:
+    name: beautyhub_network
+    driver: bridge
